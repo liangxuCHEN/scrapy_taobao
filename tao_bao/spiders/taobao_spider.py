@@ -129,7 +129,6 @@ class TBSpider(Spider):
                             taoBaoItem['category_id'] = itemList[j].get('category')
                             taoBaoItem['is_tmall'] = itemList[j].get('shopcard').get('isTmall')
                             taoBaoItem['user_id'] = itemList[j].get('user_id')
-
                             # 有目录编码对应表可以做这个
                             # for k in range(0,len(df)):
                             #     if str(df['CategoryId'][k]) == itemList[j]['category']:
@@ -137,7 +136,6 @@ class TBSpider(Spider):
                             #         break
                             #     else:
                             taoBaoItem['category'] = '-'
-
                             provString = ''
                             cityStr = ''
                             if ' ' in itemList[j]['item_loc'] and len(itemList[j]['item_loc']) > 0:
@@ -150,7 +148,6 @@ class TBSpider(Spider):
 
                             taoBaoItem['province'] = provString
                             taoBaoItem['city'] = cityStr
-
                             taoBaoItem['record_date'] = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
                             yield taoBaoItem
@@ -328,15 +325,3 @@ class TBSpider(Spider):
             taoBaoItem['record_date'] = time.strftime('%Y-%m-%d',time.localtime(time.time()))
 
             yield taoBaoItem
-
-
-
-
-
-
-
-
-
-
-
-
