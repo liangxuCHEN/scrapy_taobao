@@ -5,27 +5,35 @@ import re
 import time
 import datetime
 import requests
+from tao_bao.db.dbhelper import engine, TaoBaoProjectModel
+from sqlalchemy.orm import sessionmaker
 # 如果有目录代码
 # df = pd.read_csv('/spiders/taoBaoCategory.csv')
 
+
+Session_Class = sessionmaker(bind=engine)  # 创建与数据库的会话，Session_Class为一个类
+
+Session = Session_Class()  # 实例化与数据库的会话
 
 """
 需要查找信息列表
 
 参数说明：
 
-_id: 这个搜索项目的ID,（TODO：以后在数据库生成）
+id: 这个搜索项目的ID,（TODO：以后在数据库生成）
 market： 1 --》 淘宝， 2 --》 天猫
-keyword: 输入搜索框的关键字
-pageNumber： 需要爬取的页数，最大100页
+key_word: 输入搜索框的关键字
+page_number： 需要爬取的页数，最大100页
 min_price： 选填，搜索得到宝贝价格的最低价
 max_price: 选填，搜索得到宝贝价格的最高价
-
+project_name: 项目名称
 """
-
+# TODO:数据库获取新项目
 search_parameter = [
-    {'_id':'search_job_id', 'market': '', 'min_price':9, 'max_price':100, 'keyword': '短袖', 'pageNumber': 2}
+    {'project_name':'20180202_jacket', 'market': '', 'min_price':'', 'max_price':'', 'key_word': '夹克', 'page_number': 2}
 ]
+
+
 
 class TBSpider(Spider):
     """
@@ -42,13 +50,20 @@ class TBSpider(Spider):
 
         for data in search_parameter:
 
+            # 把项目添加到数据库
+            # TODO: 如果在数据库拿的项目就是update
+            data['created'] = current_time
+            taobao_project = TaoBaoProjectModel(**data)
+            taobao_project.status = 'running'
+            Session.add(taobao_project)
+            Session.commit()
 
-            key = str(data['keyword'])
+            key = str(data['key_word'])
 
             if ' ' in key:
                 key = ''.join(key.split())
 
-            for i in range(0,int(data['pageNumber'])):
+            for i in range(0,int(data['page_number'])):
 
                 allPidDetailData = []
                 if i==0:
@@ -87,14 +102,13 @@ class TBSpider(Spider):
                                           'initiative_id=staobaoz_{current_time}&' \
                                           'ie=utf8'.format(key=str(key), current_time=str(current_time))
 
-                        print('#########', lastUrl)
                         req = requests.get(lastUrl)
                         babyInfo = req.json()
                         itemList = babyInfo['API.CustomizedApi']['itemlist']['auctions']
                         for j in range(0,len(itemList)):
                             taoBaoItem = TaoBaoItem()
-                            taoBaoItem['pageNumber'] = i
-                            taoBaoItem['job_id'] = str(data['_id'])
+                            taoBaoItem['page_number'] = i
+                            taoBaoItem['job_id'] = str(data['project_name'])
                             taoBaoItem['item_id'] = itemList[j]['nid']
 
                             allPidDetailData.append(itemList[j]['nid'])
@@ -235,9 +249,12 @@ class TBSpider(Spider):
                 yield Request(
                     url=url,
                     callback=self.page2,
-                    meta={'page':i,'productID':str(data['_id']),'market':data['market']}
+                    meta={'page':i,'productID':str(data['project_name']),'market':data['market']}
                 )
 
+            # 更新状态
+            TaoBaoProjectModel.query.filter_by(id=taobao_project.id).update({'status': 'finish'})
+            Session.commit()
 
     def page2(self,response):
 
@@ -325,3 +342,4 @@ class TBSpider(Spider):
             taoBaoItem['record_date'] = time.strftime('%Y-%m-%d',time.localtime(time.time()))
 
             yield taoBaoItem
+
