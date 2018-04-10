@@ -29,10 +29,13 @@ max_price: 选填，搜索得到宝贝价格的最高价
 project_name: 项目名称
 """
 # TODO:数据库获取新项目
-search_parameter = [
-    {'project_name':'20180202_jacket', 'market': '', 'min_price':'', 'max_price':'', 'key_word': '夹克', 'page_number': 2}
-]
+# search_parameter = [
+#     {'project_name':'20180408_car', 'market': '淘宝/天猫', 'min_price':'', 'max_price':'', 'key_word': 'BB车', 'page_number': 2}
+# ]
 
+def get_project():
+    entity = Session.query(TaoBaoProjectModel).filter_by(status='new')
+    return [e.to_json() for e in entity]
 
 
 class TBSpider(Spider):
@@ -44,19 +47,16 @@ class TBSpider(Spider):
     allowed_domains = ["taobao.com"]
     start_urls = ['http://taobao.com/']
 
-
     def parse(self, response):
-        current_time = datetime.datetime.now().strftime('%Y%m%d')
-
+        search_parameter = get_project()
         for data in search_parameter:
-
+            current_time = datetime.datetime.now().strftime('%Y%m%d')
             # 把项目添加到数据库
             # TODO: 如果在数据库拿的项目就是update
-            data['created'] = current_time
-            taobao_project = TaoBaoProjectModel(**data)
+            taobao_project =  Session.query(TaoBaoProjectModel).filter_by(id=data['id']).first()
             taobao_project.status = 'running'
-            Session.add(taobao_project)
             Session.commit()
+
 
             key = str(data['key_word'])
 
@@ -70,7 +70,7 @@ class TBSpider(Spider):
                     try:
                         if len(str(data['min_price'])) > 0 or len(str(data['max_price'])) > 0:
 
-                            if str(data['market']) == '2':
+                            if data['market'] == '天猫':
                                 lastUrl = "https://s.taobao.com/api?ajax=true&m=customized&" \
                                           "stats_click=search_radio_all:1&bcoffset=0&js=1&sort=renqi-desc&" \
                                           "filter_tianmao=tmall&filter=reserve_price[{min_price},{max_price}]&" \
@@ -91,7 +91,7 @@ class TBSpider(Spider):
                                                            current_time=str(current_time))
                         else:
                             # 第一页最后12个产品
-                            if str(data['market']) == '2':
+                            if data['market'] == '天猫':
                                 lastUrl = 'https://s.taobao.com/api?ajax=true&m=customized&bcoffset=0&js=1&' \
                                           'sort=renqi-desc&q={key}&ntoffset=4&filter_tianmao=tmall&' \
                                           's=36&initiative_id=staobaoz_{current_time}&' \
@@ -112,7 +112,7 @@ class TBSpider(Spider):
                             taoBaoItem['item_id'] = itemList[j]['nid']
 
                             allPidDetailData.append(itemList[j]['nid'])
-                            if str(data['market']) == '2':
+                            if data['market'] == '天猫':
                                 taoBaoItem['detail_url'] = "https://detail.tmall.com/item.htm?id="+ str(itemList[j]['nid'])
                                 taoBaoItem['market'] = '天猫'
                             else:
@@ -171,7 +171,7 @@ class TBSpider(Spider):
 
                 # 有上限和下限价格的URL
                 if len(str(data['min_price']))>0 and len(str(data['max_price']))>0:
-                    if str(data['market']) == '2':
+                    if data['market'] == '天猫':
                         url = 'https://s.taobao.com/search?q={key}&imgfile=&ie=utf8&' \
                               'initiative_id=tbindexz_{current_time}&fs=1&filter_tianmao=tmall&sort=renqi-desc' \
                               '&bcoffset=0&filter=reserve_price%5B{min_price}%2C{max_price}%5D&' \
@@ -192,7 +192,7 @@ class TBSpider(Spider):
                                                   number=str(44*i))
 
                 elif len(str(data['min_price']))>0 and len(str(data['max_price']))==0:
-                    if str(data['market']) == '2':
+                    if data['market'] == '天猫':
                         url = 'https://s.taobao.com/search?q={key}&imgfile=&ie=utf8&' \
                               'initiative_id=tbindexz_{current_time}&fs=1&filter_tianmao=tmall&sort=renqi-desc&' \
                               'bcoffset=0&filter=reserve_price%5B{max_price}%2C%5D&' \
@@ -214,7 +214,7 @@ class TBSpider(Spider):
 
                 elif len(str(data['min_price'])) ==0 and len(str(data['max_price']))>0:
                     # 只有最高，没有最低
-                    if str(data['market']) == '2':
+                    if data['market'] == '天猫':
                         url = 'https://s.taobao.com/search?q={key}&imgfile=&ie=utf8&' \
                               'initiative_id=tbindexz_{current_time}&fs=1&filter_tianmao=tmall&' \
                               'sort=renqi-desc&bcoffset=0&filter=reserve_price%5B%2C{max_price}%5D&' \
@@ -233,7 +233,7 @@ class TBSpider(Spider):
 
                 else:
                     # 没有最高也没有最低
-                    if str(data['market']) == '2':
+                    if data['market'] == '天猫':
                         url = 'https://s.taobao.com/search?q={key}&imgfile=&ie=utf8&' \
                               'initiative_id=tbindexz_{current_time}&fs=1&filter_tianmao=tmall&sort=renqi-desc&' \
                               'bcoffset=0&s={number}'.format(key=str(key),
@@ -253,7 +253,7 @@ class TBSpider(Spider):
                 )
 
             # 更新状态
-            TaoBaoProjectModel.query.filter_by(id=taobao_project.id).update({'status': 'finish'})
+            taobao_project.status = 'finish'
             Session.commit()
 
     def page2(self,response):
@@ -290,7 +290,7 @@ class TBSpider(Spider):
             taoBaoItem['page_number'] = response.meta['page']
             taoBaoItem['job_id'] = response.meta['productID']
             taoBaoItem['item_id'] = allid[j]
-            if str(response.meta['market']) == '2':
+            if str(response.meta['market']) == '天猫':
                 taoBaoItem['detail_url'] = "https://detail.tmall.com/item.htm?id=" + str(allid[j])
                 taoBaoItem['market'] = '天猫'
             else:
@@ -343,3 +343,4 @@ class TBSpider(Spider):
 
             yield taoBaoItem
 
+    

@@ -6,8 +6,8 @@
 # See: https://doc.scrapy.org/en/latest/topics/item-pipeline.html
 
 
-from tao_bao.db.dbhelper import Redis, TaoBaoModel, engine
-from scrapy.exceptions import DropItem
+from tao_bao.db.dbhelper import TaoBaoModel, engine
+# from scrapy.exceptions import DropItem
 from datetime import datetime
 import copy
 

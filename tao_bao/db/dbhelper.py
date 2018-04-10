@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from scrapy.utils.project import get_project_settings  #导入seetings配置
-from sqlalchemy import create_engine, Column, String, DateTime, Integer, Float
+from sqlalchemy import create_engine, Column, String, DateTime, Integer, Float, func
 from sqlalchemy.ext.declarative import declarative_base
 import redis
 
@@ -53,7 +53,7 @@ class TaoBaoProjectModel(Base):
     created： 创建时间
     """
 
-    __tablename__ = 'tab_taobao_project'
+    __tablename__ = 'tab_project'
 
     id = Column(Integer, primary_key=True)
     market = Column(String(10))
@@ -63,7 +63,8 @@ class TaoBaoProjectModel(Base):
     min_price = Column(String(20))
     max_price = Column(String(20))
     status = Column(String(20), server_default='new')
-    created = Column(DateTime)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), server_onupdate=func.now())
 
 
     def to_json(self):
@@ -75,7 +76,10 @@ class TaoBaoProjectModel(Base):
             'page_number': self.page_number,
             'min_price': self.min_price,
             'max_price': self.max_price,
-            'status': self.status
+            'status': self.status,
+            'created_at': self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at is not None else "",
+            'updated_at': self.updated_at.strftime("%Y-%m-%d %H:%M:%S") if self.updated_at is not None else ""
+
         }
 
 
