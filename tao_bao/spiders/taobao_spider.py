@@ -7,6 +7,7 @@ import datetime
 import requests
 from tao_bao.db.dbhelper import engine, TaoBaoProjectModel
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import or_
 # 如果有目录代码
 # df = pd.read_csv('/spiders/taoBaoCategory.csv')
 
@@ -34,7 +35,10 @@ project_name: 项目名称
 # ]
 
 def get_project():
-    entity = Session.query(TaoBaoProjectModel).filter_by(status='new')
+    entity = Session.query(TaoBaoProjectModel).filter(
+        (TaoBaoProjectModel.status=='new') & 
+        ((TaoBaoProjectModel.market=='淘宝和天猫') | 
+        (TaoBaoProjectModel.market=='天猫'))).all()
     return [e.to_json() for e in entity]
 
 
